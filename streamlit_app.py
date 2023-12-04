@@ -1,20 +1,18 @@
-import streamlit as st  # pip install streamlit
-import pandas as pd  # pip install pandas
-import plotly.express as px  # pip install plotly-express
-import base64  # Standard Python Module
-from io import StringIO, BytesIO  # Standard Python Module
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import base64
+from io import StringIO, BytesIO
 
 def generate_excel_download_link(df):
-    # Credit Excel: https://discuss.streamlit.io/t/how-to-add-a-download-excel-csv-function-to-a-button/4474/5
     towrite = BytesIO()
-    df.to_excel(towrite, encoding="utf-8", index=False, header=True, engine='openpyxl')  # Specify 'openpyxl' engine
-    towrite.seek(0)  # reset pointer
+    df.to_excel(towrite, encoding="utf-8", index=False, header=True, engine='openpyxl')
+    towrite.seek(0)
     b64 = base64.b64encode(towrite.read()).decode()
     href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="data_download.xlsx">Download Excel File</a>'
     return st.markdown(href, unsafe_allow_html=True)
 
 def generate_html_download_link(fig):
-    # Credit Plotly: https://discuss.streamlit.io/t/download-plotly-plot-as-html/4426/2
     towrite = StringIO()
     fig.write_html(towrite, include_plotlyjs="cdn")
     towrite = BytesIO(towrite.getvalue().encode())
@@ -23,9 +21,9 @@ def generate_html_download_link(fig):
     return st.markdown(href, unsafe_allow_html=True)
 
 def main():
-    st.set_page_config(page_title='GPT Report Card')  # Updated title
-    st.title('GPT Report Card 📊')  # Updated title
-    st.subheader('Evaluate and analyze LLM & Agent performance')  # Updated subheader
+    st.set_page_config(page_title='GPT Report Card')
+    st.title('GPT Report Card 📊')
+    st.subheader('Evaluate and analyze LLM & Agent performance')
 
     uploaded_file = st.file_uploader('Choose a XLSX file', type='xlsx')
     if uploaded_file:
@@ -42,7 +40,7 @@ def main():
         df_grouped = df.groupby(by=[groupby_column], as_index=False)[output_columns].sum()
 
         # -- PLOT DATAFRAME
-        fig = px.bar(
+        fig1 = px.bar(
             df_grouped,
             x=groupby_column,
             y='Sales',
@@ -51,13 +49,29 @@ def main():
             template='plotly_white',
             title=f'<b>Sales & Profit by {groupby_column}</b>'
         )
-        st.plotly_chart(fig)
+        st.plotly_chart(fig1)
+
+        fig2 = px.pie(
+            df_grouped,
+            names=groupby_column,
+            values='Sales',
+            title=f'<b>Sales Distribution by {groupby_column}</b>'
+        )
+        st.plotly_chart(fig2)
+
+        fig3 = px.scatter(
+            df_grouped,
+            x='Sales',
+            y='Profit',
+            color=groupby_column,
+            title=f'<b>Scatter Plot of Sales vs Profit</b>'
+        )
+        st.plotly_chart(fig3)
 
         # -- DOWNLOAD SECTION
         st.subheader('Downloads:')
         generate_excel_download_link(df_grouped)
-        generate_html_download_link(fig)
+        generate_html_download_link(fig1)
 
 if __name__ == "__main__":
     main()
-
