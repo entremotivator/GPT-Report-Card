@@ -23,9 +23,9 @@ def generate_html_download_link(fig):
     return st.markdown(href, unsafe_allow_html=True)
 
 def main():
-    st.set_page_config(page_title='Excel Plotter')
-    st.title('Excel Plotter 📈')
-    st.subheader('Feed me with your Excel file')
+    st.set_page_config(page_title='GPT Report Card')  # Updated title
+    st.title('GPT Report Card 📊')  # Updated title
+    st.subheader('Evaluate and analyze LLM & Agent performance')  # Updated subheader
 
     uploaded_file = st.file_uploader('Choose a XLSX file', type='xlsx')
     if uploaded_file:
