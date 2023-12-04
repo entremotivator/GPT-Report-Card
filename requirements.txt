@@ -1,7 +1,0 @@
-streamlit
-pandas
-BytesIO
-StringIO
-plotly.express
-plotly.graph_objects
-plotly
