@@ -4,21 +4,22 @@ import plotly.express as px
 import base64
 from io import StringIO, BytesIO
 
-def generate_excel_download_link(df):
-    towrite = BytesIO()
-    df.to_excel(towrite, encoding="utf-8", index=False, header=True, engine='openpyxl')
-    towrite.seek(0)
-    b64 = base64.b64encode(towrite.read()).decode()
-    href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="data_download.xlsx">Download Excel File</a>'
-    return st.markdown(href, unsafe_allow_html=True)
+def generate_download_link(df, fig):
+    # Download as Excel
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, encoding="utf-8", index=False, header=True, engine='openpyxl')
+    excel_buffer.seek(0)
+    excel_b64 = base64.b64encode(excel_buffer.read()).decode()
+    excel_href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{excel_b64}" download="data_download.xlsx">Download Excel File</a>'
 
-def generate_html_download_link(fig):
-    towrite = StringIO()
-    fig.write_html(towrite, include_plotlyjs="cdn")
-    towrite = BytesIO(towrite.getvalue().encode())
-    b64 = base64.b64encode(towrite.read()).decode()
-    href = f'<a href="data:text/html;charset=utf-8;base64, {b64}" download="plot.html">Download Plot</a>'
-    return st.markdown(href, unsafe_allow_html=True)
+    # Download as HTML
+    html_buffer = StringIO()
+    fig.write_html(html_buffer, include_plotlyjs="cdn")
+    html_buffer = BytesIO(html_buffer.getvalue().encode())
+    html_b64 = base64.b64encode(html_buffer.read()).decode()
+    html_href = f'<a href="data:text/html;charset=utf-8;base64, {html_b64}" download="plot.html">Download HTML Plot</a>'
+
+    return st.markdown(excel_href + "&emsp;&emsp;" + html_href, unsafe_allow_html=True)
 
 def main():
     st.set_page_config(page_title='GPT Report Card')
@@ -70,8 +71,7 @@ def main():
 
         # -- DOWNLOAD SECTION
         st.subheader('Downloads:')
-        generate_excel_download_link(df_grouped)
-        generate_html_download_link(fig1)
+        generate_download_link(df_grouped, fig1)
 
 if __name__ == "__main__":
     main()
