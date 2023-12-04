@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import base64
 from io import BytesIO, StringIO
-import plotly.express as px
-import plotly.graph_objects as go
 
 # Function to generate download link for Excel file
 def generate_excel_download_link(df):
@@ -23,70 +22,40 @@ def generate_html_download_link(fig):
     href = f'<a href="data:text/html;charset=utf-8;base64, {b64}" download="plot.html">Download Plot</a>'
     return st.markdown(href, unsafe_allow_html=True)
 
-# Function to display summary statistics for the selected LLM metric
-def display_summary_statistics(df, metric_column):
-    st.subheader('Summary Statistics:')
-    summary_stats = df[metric_column].describe()
-    st.write(summary_stats)
+st.set_page_config(page_title='Excel Plotter')
+st.title('Excel Plotter 📈')
+st.subheader('Feed me with your Excel file')
 
-# Streamlit App
-st.set_page_config(page_title='LLM Evaluator')
-st.title('LLM Evaluator 🤖')
-st.subheader('Feed me with your LLM data')
-
-uploaded_file = st.file_uploader('Choose a CSV file', type='csv')
+uploaded_file = st.file_uploader('Choose a XLSX file', type='xlsx')
 if uploaded_file:
     st.markdown('---')
-    df = pd.read_csv(uploaded_file)
+    df = pd.read_excel(uploaded_file, engine='openpyxl')
     st.dataframe(df)
-
-    # User customization options
-    metric_column = st.selectbox(
-        'What LLM metric would you like to analyze?',
-        ('Relevance', 'Sentiment', 'Model Agreement', 'Language Match', 'Toxicity',
-         'Moderation', 'Correctness: QA evaluation', 'No labels: criteria evaluation',
-         'Criteria with labels', 'Embedding distance', 'String distance',
-         'Log feedback for a run', 'Filter runs based on feedback', 'Export runs to dataset'),
+    groupby_column = st.selectbox(
+        'What would you like to analyze?',
+        ('Importance', 'Feelings', 'Consistency', 'Linguistic Match', 'Harmfulness', 'Content Safety',
+         'Accuracy', 'Unlabeled Criteria', 'Labeled Criteria', 'Semantic Similarity', 'Textual Similarity',
+         'Run Feedback Logging', 'Feedback Filtering', 'Dataset Exporting'),
     )
 
-    plot_type = st.selectbox(
-        'Select plot type',
-        ('Bar Chart', 'Pie Chart', 'Box Plot'),
-    )
-
-    # GROUP DATAFRAME (Example: Count occurrences of each metric value)
-    df_grouped = df.groupby(by=[metric_column], as_index=False).count()
+    # GROUP DATAFRAME
+    output_columns = ['Sales', 'Profit']
+    df_grouped = df.groupby(by=[groupby_column], as_index=False)[output_columns].sum()
 
     # PLOT DATAFRAME
-    st.subheader(f'{metric_column} Analysis:')
-    if plot_type == 'Bar Chart':
-        fig = px.bar(
-            df_grouped,
-            x=metric_column,
-            y='Column_Name',  # Replace 'Column_Name' with an actual column in your dataset
-            template='plotly_white',
-            title=f'<b>{metric_column} Analysis</b>'
-        )
-    elif plot_type == 'Pie Chart':
-        fig = px.pie(
-            df_grouped,
-            names=metric_column,
-            template='plotly_white',
-            title=f'<b>{metric_column} Analysis</b>'
-        )
-    elif plot_type == 'Box Plot':
-        fig = go.Figure()
-        for value in df_grouped[metric_column].unique():
-            subset = df[df[metric_column] == value]
-            fig.add_trace(go.Box(y=subset['Column_Name'], name=str(value)))
-        fig.update_layout(title=f'<b>{metric_column} Analysis</b>', showlegend=False)
-
+    fig = px.bar(
+        df_grouped,
+        x=groupby_column,
+        y='Sales',
+        color='Profit',
+        color_continuous_scale=['red', 'yellow', 'green'],
+        template='plotly_white',
+        title=f'<b>Sales & Profit by {groupby_column}</b>'
+    )
     st.plotly_chart(fig)
-
-    # Display summary statistics
-    display_summary_statistics(df, metric_column)
 
     # DOWNLOAD SECTION
     st.subheader('Downloads:')
     generate_excel_download_link(df_grouped)
     generate_html_download_link(fig)
+
