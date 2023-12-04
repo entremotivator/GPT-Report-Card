@@ -1,111 +1,131 @@
-
-import requests
-import json
+import streamlit as st
 import pandas as pd
-import logging
-import configparser
-import argparse
-import schedule
-import time
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import datetime
+from PIL import Image
+import plotly.express as px
+import plotly.graph_objects as go
 
-# Set up logging
-logging.basicConfig(filename='/Users/donmenicohudson/Downloads/langchain_agent.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
+# reading the data from excel file
+df = pd.read_excel("Adidas.xlsx")
+st.set_page_config(layout="wide")
+st.markdown('<style>div.block-container{padding-top:1rem;}</style>', unsafe_allow_html=True)
+image = Image.open('adidas-logo.jpg')
 
-# Parse command-line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('--langsmith_endpoint', help='The Langsmith API endpoint')
-parser.add_argument('--trulens_endpoint', help='The Trulens API endpoint')
-parser.add_argument('--api_key', help='The API key')
-args = parser.parse_args()
+col1, col2 = st.columns([0.1,0.9])
+with col1:
+    st.image(image,width=100)
 
-# Get the API endpoints and headers from the command-line arguments or the configuration file
-config = configparser.ConfigParser()
-config.read('/Users/donmenicohudson/Downloads/langchain_agent.ini')
-langsmith_api_endpoint = args.langsmith_endpoint or config.get('API', 'langsmith_endpoint')
-trulens_api_endpoint = args.trulens_endpoint or config.get('API', 'trulens_endpoint')
-headers = {
-    'Content-Type': 'application/json',
-    'Authorization': f"Bearer {args.api_key or config.get('API', 'api_key')}"
-}
+html_title = """
+    <style>
+    .title-test {
+    font-weight:bold;
+    padding:5px;
+    border-radius:6px;
+    }
+    </style>
+    <center><h1 class="title-test">Adidas Interactive Sales Dashboard</h1></center>"""
+with col2:
+    st.markdown(html_title, unsafe_allow_html=True)
 
-# Define the job that will be scheduled
-def job():
-    try:
-        # Make a GET request to the Langsmith API
-        langsmith_response = requests.get(langsmith_api_endpoint, headers=headers)
-        langsmith_response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        logging.error(f'Error making request to Langsmith API: {e}')
-        langsmith_data = {}
-    else:
-        # Parse the Langsmith API response
-        langsmith_data = langsmith_response.json()
-        logging.info('Langsmith API response parsed successfully')
+col3, col4, col5 = st.columns([0.1,0.45,0.45])
+with col3:
+    box_date = str(datetime.datetime.now().strftime("%d %B %Y"))
+    st.write(f"Last updated by:  \n {box_date}")
 
-    try:
-        # Make a GET request to the Trulens API
-        trulens_response = requests.get(trulens_api_endpoint, headers=headers)
-        trulens_response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        logging.error(f'Error making request to Trulens API: {e}')
-        trulens_data = {}
-    else:
-        # Parse the Trulens API response
-        trulens_data = trulens_response.json()
-        logging.info('Trulens API response parsed successfully')
+with col4:
+    fig = px.bar(df, x = "Retailer", y = "TotalSales", labels={"TotalSales" : "Total Sales {$}"},
+                 title = "Total Sales by Retailer", hover_data=["TotalSales"],
+                 template="gridon",height=500)
+    st.plotly_chart(fig,use_container_width=True)
 
-    try:
-        # Combine the Langsmith and Trulens data into a single report
-        report = pd.concat([pd.DataFrame(langsmith_data), pd.DataFrame(trulens_data)], ignore_index=True)
-    except Exception as e:
-        logging.error(f'Error combining data into report: {e}')
-        report = pd.DataFrame()
-    else:
-        logging.info('Data combined into report successfully')
+_, view1, dwn1, view2, dwn2 = st.columns([0.15,0.20,0.20,0.20,0.20])
+with view1:
+    expander = st.expander("Retailer wise Sales")
+    data = df[["Retailer","TotalSales"]].groupby(by="Retailer")["TotalSales"].sum()
+    expander.write(data)
+with dwn1:
+    st.download_button("Get Data", data = data.to_csv().encode("utf-8"),
+                       file_name="RetailerSales.csv", mime="text/csv")
 
-    # Define the file path
-    file_path = '/Users/donmenicohudson/Downloads/report.csv'
+df["Month_Year"] = df["InvoiceDate"].dt.strftime("%b'%y")
+result = df.groupby(by = df["Month_Year"])["TotalSales"].sum().reset_index()
 
-    try:
-        # Save the report as a CSV file
-        report.to_csv(file_path, index=False)
-    except Exception as e:
-        logging.error(f'Error saving report: {e}')
-    else:
-        logging.info('Report saved successfully')
+with col5:
+    fig1 = px.line(result, x = "Month_Year", y = "TotalSales", title="Total Sales Over Time",
+                   template="gridon")
+    st.plotly_chart(fig1,use_container_width=True)
 
-        # Send an email notification
-        try:
-            # Define the email parameters
-            sender = 'sender@example.com'
-            receiver = 'receiver@example.com'
-            subject = 'Report saved successfully'
-            body = f'The report has been saved as {file_path}.'
-            server = 'smtp.example.com'
-            username = 'username'
-            password = 'password'
+with view2:
+    expander = st.expander("Monthly Sales")
+    data = result
+    expander.write(data)
+with dwn2:
+    st.download_button("Get Data", data = result.to_csv().encode("utf-8"),
+                       file_name="Monthly Sales.csv", mime="text/csv")
+    
+st.divider()
 
-            # Create the email
-            email = MIMEMultipart()
-            email['From'] = sender
-            email['To'] = receiver
-            email['Subject'] = subject
-            email.attach(MIMEText(body, 'plain'))
+result1 = df.groupby(by="State")[["TotalSales","UnitsSold"]].sum().reset_index()
 
-            # Send the email
-            with smtplib.SMTP(server) as smtp:
-                smtp.login(username, password)
-                smtp.send_message(email)
-        except Exception as e:
-            logging.error(f'Error sending email: {e}')
+# add the units sold as a line chart on a secondary y-axis
+fig3 = go.Figure()
+fig3.add_trace(go.Bar(x = result1["State"], y = result1["TotalSales"], name = "Total Sales"))
+fig3.add_trace(go.Scatter(x=result1["State"], y = result1["UnitsSold"], mode = "lines",
+                          name ="Units Sold", yaxis="y2"))
+fig3.update_layout(
+    title = "Total Sales and Units Sold by State",
+    xaxis = dict(title="State"),
+    yaxis = dict(title="Total Sales", showgrid = False),
+    yaxis2 = dict(title="Units Sold", overlaying = "y", side = "right"),
+    template = "gridon",
+    legend = dict(x=1,y=1.1)
+)
+_, col6 = st.columns([0.1,1])
+with col6:
+    st.plotly_chart(fig3,use_container_width=True)
 
-# Schedule the job to run every hour
-schedule.every(1).hours.do(job)
+_, view3, dwn3 = st.columns([0.5,0.45,0.45])
+with view3:
+    expander = st.expander("View Data for Sales by Units Sold")
+    expander.write(result1)
+with dwn3:
+    st.download_button("Get Data", data = result1.to_csv().encode("utf-8"), 
+                       file_name = "Sales_by_UnitsSold.csv", mime="text/csv")
+st.divider()
 
-# Keep the script running
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+_, col7 = st.columns([0.1,1])
+treemap = df[["Region","City","TotalSales"]].groupby(by = ["Region","City"])["TotalSales"].sum().reset_index()
+
+def format_sales(value):
+    if value >= 0:
+        return '{:.2f} Lakh'.format(value / 1_000_00)
+
+treemap["TotalSales (Formatted)"] = treemap["TotalSales"].apply(format_sales)
+
+fig4 = px.treemap(treemap, path = ["Region","City"], values = "TotalSales",
+                  hover_name = "TotalSales (Formatted)",
+                  hover_data = ["TotalSales (Formatted)"],
+                  color = "City", height = 700, width = 600)
+fig4.update_traces(textinfo="label+value")
+
+with col7:
+    st.subheader(":point_right: Total Sales by Region and City in Treemap")
+    st.plotly_chart(fig4,use_container_width=True)
+
+_, view4, dwn4 = st.columns([0.5,0.45,0.45])
+with view4:
+    result2 = df[["Region","City","TotalSales"]].groupby(by=["Region","City"])["TotalSales"].sum()
+    expander = st.expander("View data for Total Sales by Region and City")
+    expander.write(result2)
+with dwn4:
+    st.download_button("Get Data", data = result2.to_csv().encode("utf-8"),
+                                        file_name="Sales_by_Region.csv", mime="text.csv")
+
+_,view5, dwn5 = st.columns([0.5,0.45,0.45])
+with view5:
+    expander = st.expander("View Sales Raw Data")
+    expander.write(df)
+with dwn5:
+    st.download_button("Get Raw Data", data = df.to_csv().encode("utf-8"),
+                       file_name = "SalesRawData.csv", mime="text/csv")
+st.divider()
