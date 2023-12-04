@@ -7,7 +7,7 @@ from io import StringIO, BytesIO  # Standard Python Module
 def generate_excel_download_link(df):
     # Credit Excel: https://discuss.streamlit.io/t/how-to-add-a-download-excel-csv-function-to-a-button/4474/5
     towrite = BytesIO()
-    df.to_excel(towrite, encoding="utf-8", index=False, header=True, engine='xlsxwriter')  # Specify 'xlsxwriter' engine
+    df.to_excel(towrite, encoding="utf-8", index=False, header=True, engine='openpyxl')  # Specify 'openpyxl' engine
     towrite.seek(0)  # reset pointer
     b64 = base64.b64encode(towrite.read()).decode()
     href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="data_download.xlsx">Download Excel File</a>'
