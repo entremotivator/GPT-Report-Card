@@ -1,1 +1,7 @@
-
+streamlit
+pandas
+base64
+BytesIO
+StringIO
+plotly.express
+plotly.graph_objects
