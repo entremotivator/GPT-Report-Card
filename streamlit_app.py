@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly
-import base64
 from io import BytesIO, StringIO
 
 # Function to generate download link for Excel file
