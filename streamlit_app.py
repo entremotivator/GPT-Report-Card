@@ -52,6 +52,7 @@ def main():
     # Check if the selected groupby_column exists in the DataFrame
     if groupby_column not in df.columns:
         st.warning(f"Warning: '{groupby_column}' column not found in the DataFrame.")
+        st.warning(f"Available columns: {', '.join(df.columns)}")  # Display available columns
         return
 
     # -- GROUP DATAFRAME
