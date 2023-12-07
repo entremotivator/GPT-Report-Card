@@ -7,7 +7,9 @@ from io import StringIO, BytesIO
 def generate_download_link(df, fig, groupby_column, download_section):
     # Download as Excel
     excel_buffer = BytesIO()
-    df.to_excel(excel_buffer, encoding="utf-8", index=False, header=True, engine='openpyxl')
+    with pd.ExcelWriter(excel_buffer, engine='openpyxl', options={'encoding':'utf-8'}) as writer:
+        df.to_excel(writer, index=False, header=True)
+
     excel_buffer.seek(0)
     excel_b64 = base64.b64encode(excel_buffer.read()).decode()
     excel_href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{excel_b64}" download="data_download.xlsx">Download Excel File</a>'
@@ -89,24 +91,8 @@ def main():
     st.plotly_chart(fig3)
 
     # -- DOWNLOAD SECTION
-   def generate_download_link(df, fig, groupby_column, download_section):
-    # Download as Excel
-    excel_buffer = BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine='openpyxl', options={'encoding':'utf-8'}) as writer:
-        df.to_excel(writer, index=False, header=True)
+    download_section = st.subheader('Downloads:')
+    generate_download_link(df_grouped, fig1, groupby_column, download_section)
 
-    excel_buffer.seek(0)
-    excel_b64 = base64.b64encode(excel_buffer.read()).decode()
-    excel_href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{excel_b64}" download="data_download.xlsx">Download Excel File</a>'
-
-    # Download as HTML
-    html_buffer = StringIO()
-    fig.write_html(html_buffer, include_plotlyjs="cdn")
-    html_buffer = BytesIO(html_buffer.getvalue().encode())
-    html_b64 = base64.b64encode(html_buffer.read()).decode()
-    html_href = f'<a href="data:text/html;charset=utf-8;base64, {html_b64}" download="plot.html">Download HTML Plot</a>'
-
-    download_section.markdown(
-        f"Download: {excel_href} &emsp;&emsp; {html_href}", 
-        unsafe_allow_html=True
-    )
+if __name__ == "__main__":
+    main()
